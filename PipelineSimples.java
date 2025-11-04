@@ -78,7 +78,7 @@ public class PipelineSimples {
         System.out.println("Conflitos de Dados: " + conflitosDados);
         System.out.println("Conflitos de Controle: " + conflitosControle);
         System.out.println("NOPs Inseridos: " + nopsInseridos);
-        System.out.println("Sobrecusto: +" + nopsInseridos + " instruções");
+        System.out.println("Sobrecusto: +" + nopsInseridos + " instruçoes");
         System.out.println("Total final: " + (instrucoes.size() + nopsInseridos));
         System.out.println("Endereço final: 0x" + String.format("%04X", endereco - 4));
         System.out.println("\n--------------------------------------------\n");
