@@ -5,7 +5,8 @@ import java.util.*;
 
 public class PipelineSimples {
     public static void main(String[] args) throws IOException {
-        String arquivoEntrada = "instrucoes.txt";
+        // String arquivoEntrada = "instrucoes.txt";
+        String arquivoEntrada = "fib_rec_hexadecimal.txt";
 
         // Lê todas as instruções do arquivo
         List<String> instrucoes = Files.readAllLines(Paths.get(arquivoEntrada));
@@ -15,56 +16,68 @@ public class PipelineSimples {
 
         // Simula os dois modos
         simularPipeline(instrucoes, false); // sem forwarding
-        simularPipeline(instrucoes, true);  // com forwarding
+        simularPipeline(instrucoes, true); // com forwarding
     }
 
     public static void simularPipeline(List<String> instrucoes, boolean forwarding) throws IOException {
-        List<String> saida = new ArrayList<>();
-        Map<Integer, String> mapa = new LinkedHashMap<>();
+        List<String> saida = new ArrayList<>(); // linhas de saída com endereços
+        Map<Integer, String> mapa = new LinkedHashMap<>(); // mantém a ordem das instruções com endereços
 
+        // Contadores de conflitos e NOPs
         int conflitosDados = 0;
         int conflitosControle = 0;
         int nopsInseridos = 0;
-
         int endereco = 0; // endereço inicial
-        String regAnterior = "";
+        String regDestinoAnterior = ""; // registrador destino da instrução anterior
 
         // Percorre todas as instruções
         for (String instrucao : instrucoes) {
             instrucao = instrucao.trim();
-            if (instrucao.isEmpty()) continue;
+            if (instrucao.isEmpty())
+                continue;
 
             mapa.put(endereco, instrucao);
             endereco += 4;
 
+            // arrumar a deteccao de conflitos de controle e arrumar o NOPs (add sempre 3)
+            // ARRUMAR OS NOPS
+
             // Detecta conflito de controle
             if (instrucao.startsWith("BEQ") || instrucao.startsWith("BNE") || instrucao.startsWith("J")) {
                 conflitosControle++;
-                if (!forwarding) {
+
+                for (int i = 0; i < 3; i++) {
                     mapa.put(endereco, "NOP");
                     endereco += 4;
                     nopsInseridos++;
                 }
-                regAnterior = "";
+
+                regDestinoAnterior = "";
                 continue;
             }
 
             // Detecta conflito de dados
-            String[] partes = instrucao.replace(",", "").split(" ");
-            if (partes.length >= 2) {
-                String destino = partes[1]; // registrador destino
+            String semVirgulas = instrucao.replace(",", "");
+            String[] partes = semVirgulas.split("\\s+");
 
-                if (!regAnterior.isEmpty() && instrucao.contains(regAnterior)) {
+            if (partes.length >= 3) {
+                String rd = partes[1]; // destino desta instrução
+                String rs = partes[2]; // fonte 1
+                String rt = partes.length >= 4 ? partes[3] : "";
+
+                if (!regDestinoAnterior.isEmpty() && (rs.equals(regDestinoAnterior) || rt.equals(regDestinoAnterior))) {
                     conflitosDados++;
-                    int qtNops = forwarding ? 1 : 2;
-                    for (int i = 0; i < qtNops; i++) {
+
+                    for (int i = 0; i < 3; i++) {
                         mapa.put(endereco, "NOP");
                         endereco += 4;
                         nopsInseridos++;
                     }
                 }
-                regAnterior = destino;
+
+                regDestinoAnterior = rd;
             }
+
         }
 
         // Monta resultado com endereços
@@ -73,17 +86,15 @@ public class PipelineSimples {
             saida.add(endHex + "  " + e.getValue());
         }
 
-        // Mostra o relatório
         System.out.println("Resultado (" + (forwarding ? "Com" : "Sem") + " Forwarding)");
         System.out.println("Conflitos de Dados: " + conflitosDados);
         System.out.println("Conflitos de Controle: " + conflitosControle);
         System.out.println("NOPs Inseridos: " + nopsInseridos);
-        System.out.println("Sobrecusto: +" + nopsInseridos + " instruçoes");
+        System.out.println("Sobrecusto: +" + nopsInseridos + " instruções");
         System.out.println("Total final: " + (instrucoes.size() + nopsInseridos));
-        System.out.println("Endereço final: 0x" + String.format("%04X", endereco - 4));
+        System.out.println("Endereço final: 0x" + String.format("%04X", (mapa.size() * 4) - 4));
         System.out.println("\n--------------------------------------------\n");
 
-        // Salva o resultado em arquivo
         String nomeSaida = forwarding ? "saida_com_forwarding.txt" : "saida_sem_forwarding.txt";
         Files.write(Paths.get(nomeSaida), saida);
     }
